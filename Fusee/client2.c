@@ -54,7 +54,7 @@ int main() {
     }
 
     // Initialisation shared memory
-    shmid = shmget(13245, 512 * sizeof (char), 0660); // Creation de la memoire partage
+    shmid = shmget(13245, 4096 * sizeof (char), 0660); // Creation de la memoire partage
     if (shmid == -1) {
         perror("Erreur lors du shmget");
         exit(-1);
@@ -64,10 +64,10 @@ int main() {
 
     while (1) {
         scanf("%s", string);
-        printf("%s\n", string);
+        printf("String envoyee %s\n", string);
         up(semid, 0);
         down(semid, 0);
-        printf("%s\n", string);   
+        printf("String recu %s\n\n", string);   
     }
 
     up(semid, 0);

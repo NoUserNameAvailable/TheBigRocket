@@ -57,6 +57,7 @@ int killLePeuple(char * string, int shmid, int semid) {
 int main() {
     int i = 0, semid, shmid;
     char *string;
+    string = malloc(4096 * sizeof(char));
     
     // creation semaphore
     semid = semget(1234, 1, IPC_CREAT | 0660); // Creation d'un groupe contenant 2 semaphore	
@@ -68,7 +69,7 @@ int main() {
     initialize(semid, 0, 0);
 
     // creation memoire partagee
-    shmid = shmget(13245, 512 * sizeof (char), IPC_CREAT | 0660); // Creation de la memoire partagee
+    shmid = shmget(13245, 4096 * sizeof (char), IPC_CREAT | 0660); // Creation de la memoire partagee
     if (shmid == -1) {
         perror("Erreur lors du shmget");
         exit(-1);
@@ -82,14 +83,17 @@ int main() {
 
         down(semid, 0);
         printf("serveur %s \n", string);
+        fflush(stdout);
         for (i = 0; i<sizeof (string); i++)
             string[i] = toupper(string[i]);
 
         printf("%s", string);
+        fflush(stdout);
         printf("\n");
+        fflush(stdout);
         up(semid, 0);
-        down(semid, 0);
-        up(semid, 0);
+//        down(semid, 0);
+//        up(semid, 0);
     }
 
 
