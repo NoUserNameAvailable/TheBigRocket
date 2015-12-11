@@ -35,7 +35,10 @@ OBJECTDIR=${CND_BUILDDIR}/${CND_CONF}/${CND_PLATFORM}
 
 # Object Files
 OBJECTFILES= \
-	${OBJECTDIR}/main.o
+	${OBJECTDIR}/client2.o \
+	${OBJECTDIR}/main.o \
+	${OBJECTDIR}/serveur2.o \
+	${OBJECTDIR}/test.o
 
 
 # C Compiler Flags
@@ -62,10 +65,25 @@ ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/fusee: ${OBJECTFILES}
 	${MKDIR} -p ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}
 	${LINK.c} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/fusee ${OBJECTFILES} ${LDLIBSOPTIONS}
 
+${OBJECTDIR}/client2.o: client2.c 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} "$@.d"
+	$(COMPILE.c) -g -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/client2.o client2.c
+
 ${OBJECTDIR}/main.o: main.c 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} "$@.d"
 	$(COMPILE.c) -g -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/main.o main.c
+
+${OBJECTDIR}/serveur2.o: serveur2.c 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} "$@.d"
+	$(COMPILE.c) -g -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/serveur2.o serveur2.c
+
+${OBJECTDIR}/test.o: test.c 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} "$@.d"
+	$(COMPILE.c) -g -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/test.o test.c
 
 # Subprojects
 .build-subprojects:
