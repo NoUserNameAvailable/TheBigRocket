@@ -41,7 +41,9 @@ int up(int sem_id, int sem_num) {
 int main() {
     int i = 0, semid, shmid;
     char *string;
-
+    string = malloc(4096 * sizeof(char));
+    char *string_in;
+    string_in = malloc(4096 *sizeof(char));
 
 
     pid_t pid;
@@ -63,8 +65,13 @@ int main() {
     string = (char*) shmat(shmid, NULL, SHM_W | SHM_R); // Attachement de la memoire partagee dans le pointeur memoire
 
     while (1) {
-        scanf("%s", string);
-        printf("String envoyee %s\n", string);
+
+        fgets (string_in, 4096, stdin);
+        if ((strlen(string_in)>0) && (string_in[strlen (string_in) - 1] == '\n'))
+        string_in[strlen (string_in) - 1] = '\0';
+        
+        sprintf(string, "%s", string_in);
+        printf("String envoyee %s\n", string_in);
         up(semid, 0);
         down(semid, 0);
         printf("String recu %s\n\n", string);   

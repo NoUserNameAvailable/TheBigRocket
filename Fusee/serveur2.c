@@ -82,10 +82,10 @@ int main() {
         string = (char*) shmat(shmid, NULL, SHM_W | SHM_R); // Attachement de la memoire partagee dans le pointeur memoire
 
         down(semid, 0);
-        printf("serveur %s \n", string);
+        printf("serveur message recu %s \n", string);
         fflush(stdout);
-        for (i = 0; i<sizeof (string); i++)
-            string[i] = toupper(string[i]);
+
+        //sprintf(string, "%s", string);
 
         printf("%s", string);
         fflush(stdout);
