@@ -1,4 +1,4 @@
-/* 
+/*
  * File:   main.c
  * Author: ruimy_t
  *
@@ -9,7 +9,7 @@
 #include <stdlib.h>
 
 /*
- * 
+ *
  */
 int main(int argc, char** argv) {
 
