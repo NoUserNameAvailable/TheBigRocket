@@ -90,14 +90,28 @@ int main() {
     int status;
 
     //Creation du tableau pour les reservations
-    int ** reserv = (int **) shmat(shmid_reserv, NULL, 0);
-    const size_t row_pointers_bytes = 5 * sizeof(*reserv);
-    const size_t row_elements_bytes = 5 * sizeof(**reserv);
-    reserv = malloc(row_pointers_bytes + 5 * row_elements_bytes);
-    
-      reserv[0][0] = 3;
+    //    int ** reserv = (int **) shmat(shmid_reserv, NULL, 0);
+    //    const size_t row_pointers_bytes = 5 * sizeof(*reserv);
+    //    const size_t row_elements_bytes = 5 * sizeof(**reserv);
+    //    reserv = malloc(row_pointers_bytes + 5 * row_elements_bytes);
+    //    reserv[0][0] = 3;
     //    printf("Tableau début %i", reserv[0][0]);
     //    fflush(stdout);
+
+    
+    //Test
+    int ** array;
+    array = (int **) shmat(shmid, 0, 0);
+
+    array = malloc(5 * sizeof (int *));
+    for(int i=0; i<5; i++){
+        array[i] = malloc(5 *sizeof(int));
+    }
+    array[0][0] = 3;
+    
+    printf("%i", array[0][0]);
+    fflush(stdout);
+    //fin test
 
     while (1) {
         string = (char*) shmat(shmid, NULL, SHM_W | SHM_R); // Attachement de la memoire partagee dans le pointeur memoire
