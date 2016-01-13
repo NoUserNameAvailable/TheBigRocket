@@ -54,11 +54,17 @@ int killLePeuple(char * string, int shmid, int semid) {
     exit(1);
 }
 
+void processusEnfant(char * query, int semid) {
+    printf("Message recu dans le fils : %s \n", query);
+    fflush(stdout);
+    up(semid, 0);
+}
+
 int main() {
     int i = 0, semid, shmid;
     char *string;
-    string = malloc(4096 * sizeof(char));
-    
+    string = malloc(4096 * sizeof (char));
+
     // creation semaphore
     semid = semget(1234, 1, IPC_CREAT | 0660); // Creation d'un groupe contenant 2 semaphore	
     if (semid == -1) {
@@ -74,29 +80,49 @@ int main() {
         perror("Erreur lors du shmget");
         exit(-1);
     }
-    
+
     //Tuer les processus mechants
     //killLePeuple(string, semid, shmid);
-    
+
+    //Initialisation pid
+    pid_t pid;
+
     while (1) {
         string = (char*) shmat(shmid, NULL, SHM_W | SHM_R); // Attachement de la memoire partagee dans le pointeur memoire
 
         down(semid, 0);
-        printf("serveur message recu %s \n", string);
-        fflush(stdout);
 
-        //sprintf(string, "%s", string);
+        pid = fork();
+        switch (pid) {
+            case -1:
+                perror("fork");
+                return EXIT_FAILURE;
+                break;
 
-        printf("%s", string);
-        fflush(stdout);
-        printf("\n");
-        fflush(stdout);
-        up(semid, 0);
-//        down(semid, 0);
-//        up(semid, 0);
+            case 0:
+                processusEnfant(string, semid);
+                break;
+
+            default:
+
+                break;
+        }
     }
+    printf("serveur message recu %s \n", string);
+    fflush(stdout);
+
+    //sprintf(string, "%s", string);
+
+    //    printf("%s", string);
+    //    fflush(stdout);
+    //    printf("\n");
+    //    fflush(stdout);
+    //    up(semid, 0);
+    //        down(semid, 0);
+    //        up(semid, 0);
 
 
-    return 0;
+
+return 0;
 
 }
