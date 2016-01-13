@@ -86,7 +86,8 @@ int main() {
 
     //Initialisation pid
     pid_t pid;
-
+    int status;
+    
     while (1) {
         string = (char*) shmat(shmid, NULL, SHM_W | SHM_R); // Attachement de la memoire partagee dans le pointeur memoire
 
@@ -104,9 +105,10 @@ int main() {
                 break;
 
             default:
-
+                waitpid(pid, &status, 0);
                 break;
         }
+        
     }
     printf("serveur message recu %s \n", string);
     fflush(stdout);
@@ -123,6 +125,6 @@ int main() {
 
 
 
-return 0;
+    return 0;
 
 }
