@@ -63,7 +63,7 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
     printf("Message recu dans le fils : %s \n", query);
     sprintf(query, "%s", "holle \n");
     fflush(stdout);
-
+    down(shmid_reserv, 0);
     jour *reserv = (jour *) shmat(shmid_reserv, NULL, 0);
     printf("Reservation dans le fils : %i", reserv[0].date);
     fflush(stdout);
@@ -94,6 +94,7 @@ int main() {
         perror("Erreur lors du shmget");
         exit(-1);
     }
+    initialize(shmid, 0,0);
 
     //Tuer les processus mechants
     //killLePeuple(string, semid, shmid);
