@@ -62,7 +62,7 @@ void processusEnfant(char * query, int semid) {
 }
 
 int main() {
-    int i = 0, semid, shmid;
+    int i = 0, semid, shmid, shmid_reserv;
     char *string;
     string = malloc(4096 * sizeof (char));
 
@@ -88,7 +88,17 @@ int main() {
     //Initialisation pid
     pid_t pid;
     int status;
+
+    //Creation du tableau pour les reservations
+    int ** reserv = (int **) shmat(shmid_reserv, NULL, 0);
+    const size_t row_pointers_bytes = 5 * sizeof(*reserv);
+    const size_t row_elements_bytes = 5 * sizeof(**reserv);
+    reserv = malloc(row_pointers_bytes + 5 * row_elements_bytes);
     
+      reserv[0][0] = 3;
+    //    printf("Tableau début %i", reserv[0][0]);
+    //    fflush(stdout);
+
     while (1) {
         string = (char*) shmat(shmid, NULL, SHM_W | SHM_R); // Attachement de la memoire partagee dans le pointeur memoire
 
@@ -109,7 +119,7 @@ int main() {
                 waitpid(pid, &status, 0);
                 break;
         }
-        
+
     }
     printf("serveur message recu %s \n", string);
     fflush(stdout);
