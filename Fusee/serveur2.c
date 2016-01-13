@@ -20,6 +20,11 @@ union semun {
     struct seminfo *__buf;
 };
 
+typedef struct {
+    int date;
+    int horaires[5];
+} jour;
+
 int initialize(int sem_id, int sem_num, int init) {
     union semun semunion;
 
@@ -54,14 +59,22 @@ int killLePeuple(char * string, int shmid, int semid) {
     exit(1);
 }
 
-void processusEnfant(char * query, int semid) {
+void processusEnfant(char * query, int semid, int shmid_reserv) {
     printf("Message recu dans le fils : %s \n", query);
     sprintf(query, "%s", "holle \n");
     fflush(stdout);
+
+    jour *reserv = (jour *) shmat(shmid_reserv, NULL, 0);
+    printf("Reservation dans le fils : %i", reserv[0].date);
+    fflush(stdout);
+    
     up(semid, 0);
 }
 
 int main() {
+
+
+
     int i = 0, semid, shmid, shmid_reserv;
     char *string;
     string = malloc(4096 * sizeof (char));
@@ -89,29 +102,22 @@ int main() {
     pid_t pid;
     int status;
 
-    //Creation du tableau pour les reservations
-    //    int ** reserv = (int **) shmat(shmid_reserv, NULL, 0);
-    //    const size_t row_pointers_bytes = 5 * sizeof(*reserv);
-    //    const size_t row_elements_bytes = 5 * sizeof(**reserv);
-    //    reserv = malloc(row_pointers_bytes + 5 * row_elements_bytes);
-    //    reserv[0][0] = 3;
-    //    printf("Tableau début %i", reserv[0][0]);
-    //    fflush(stdout);
 
-    
-    //Test
-    int ** array;
-    array = (int **) shmat(shmid, 0, 0);
-
-    array = malloc(5 * sizeof (int *));
-    for(int i=0; i<5; i++){
-        array[i] = malloc(5 *sizeof(int));
+    //Strucutre pour gerer les reservations
+    jour * reserv = malloc(1 * sizeof (*reserv));
+    reserv[0].date = 0;
+    reserv[0].horaires[0] = 8;
+    reserv[0].horaires[1] = 14;
+    reserv[0].horaires[2] = 14;
+    reserv[0].horaires[3] = 8;
+    reserv[0].horaires[4] = 8;
+    shmid_reserv = shmget(19999, sizeof (reserv), IPC_CREAT | 0660);
+    if (shmid_reserv == -1) {
+        perror("Erreur lors du shmget_reserv");
+        exit(-1);
     }
-    array[0][0] = 3;
-    
-    printf("%i", array[0][0]);
-    fflush(stdout);
-    //fin test
+
+    //reserv = realloc(reserv, sizeof(reserv) * sizeof(*reserv));
 
     while (1) {
         string = (char*) shmat(shmid, NULL, SHM_W | SHM_R); // Attachement de la memoire partagee dans le pointeur memoire
@@ -126,7 +132,7 @@ int main() {
                 break;
 
             case 0:
-                processusEnfant(string, semid);
+                processusEnfant(string, semid, shmid_reserv);
                 break;
 
             default:
@@ -149,7 +155,8 @@ int main() {
     //        up(semid, 0);
 
 
-
+    free(reserv);
+    free(string);
     return 0;
 
 }
