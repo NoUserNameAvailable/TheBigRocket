@@ -56,6 +56,7 @@ int killLePeuple(char * string, int shmid, int semid) {
 
 void processusEnfant(char * query, int semid) {
     printf("Message recu dans le fils : %s \n", query);
+    sprintf(query, "%s", "holle \n");
     fflush(stdout);
     up(semid, 0);
 }
