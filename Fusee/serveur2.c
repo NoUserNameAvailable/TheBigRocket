@@ -28,6 +28,11 @@ typedef struct {
     int horaires[5];
 } jour;
 
+struct JOUR {
+    int date;
+    int horaires[5];
+};
+
 int initialize(int sem_id, int sem_num, int init) {
     union semun semunion;
 
@@ -101,7 +106,7 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
         printf("Reservation dans le fils : %i \n", reserv[0].date);
 
         //Verification du tableau
-        for (int i = 0; i<sizeof reserv; i++) {
+        for (int i = 0; i<NELEMS(reserv); i++) {
             printf("Jour %i", reserv[i].horaires[1]);
             fflush(stdout);
         }
@@ -149,15 +154,21 @@ int main() {
     //Strucutre pour gerer les reservations
     printf("taille jour %i \n", sizeof (jour));
     fflush(stdout);
-    jour * reserv = malloc(2 * sizeof (jour));
-    reserv[0].date = 0;
-    reserv[0].horaires[0] = 8;
-    reserv[0].horaires[1] = 14;
-    reserv[0].horaires[2] = 14;
-    reserv[0].horaires[3] = 8;
-    reserv[0].horaires[4] = 8;
+    jour * reserv = malloc(45 * sizeof (jour));
+    for (int i = 0; i < 45; i++) {
+        reserv[i].date = i;
+        reserv[i].horaires[0] = 8;
+        reserv[i].horaires[1] = 14;
+        reserv[i].horaires[2] = 14;
+        reserv[i].horaires[3] = 8;
+        reserv[i].horaires[4] = 8;
+    }
+
     int nbelemns = NELEMS(reserv);
-    printf("taille reserv %i \n", nbelemns);
+
+    printf("taille horaires %i \n", sizeof (jour));
+    printf("taille reserv %i \n", sizeof reserv);
+    printf("eleme 40 %i \n", reserv[40].horaires[0]);
 
     shmid_reserv = shmget(19999, sizeof (reserv), IPC_CREAT | 0660);
     if (shmid_reserv == -1) {
