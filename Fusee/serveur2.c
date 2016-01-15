@@ -154,7 +154,8 @@ int main() {
     //Strucutre pour gerer les reservations
     printf("taille jour %i \n", sizeof (jour));
     fflush(stdout);
-    jour * reserv = malloc(45 * sizeof (jour));
+    jour * reserv = (jour*) malloc(10*sizeof (jour));
+    reserv = (jour*) realloc(reserv, 2*sizeof(jour));
     for (int i = 0; i < 45; i++) {
         reserv[i].date = i;
         reserv[i].horaires[0] = 8;
