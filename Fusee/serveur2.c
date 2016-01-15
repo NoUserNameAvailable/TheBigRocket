@@ -12,6 +12,9 @@
 #include <sys/shm.h>
 #include <errno.h>
 #include <ctype.h>
+#include <string.h>
+
+#define NELEMS(x) (sizeof(x) / sizeof((x)[0]))
 
 union semun {
     int val;
@@ -61,13 +64,52 @@ int killLePeuple(char * string, int shmid, int semid) {
 
 void processusEnfant(char * query, int semid, int shmid_reserv) {
     printf("Message recu dans le fils : %s \n", query);
-    sprintf(query, "%s", "holle \n");
+
     fflush(stdout);
-    down(shmid_reserv, 0);
-    jour *reserv = (jour *) shmat(shmid_reserv, NULL, 0);
-    printf("Reservation dans le fils : %i", reserv[0].date);
-    fflush(stdout);
-    
+
+    //Parse message
+    int date = -1;
+    int nb_ticket = 0;
+    if (query[0] == 'C') {
+        printf("Consultation \n");
+        char * token;
+        char * stringp = query;
+
+        int j = 0;
+        while (stringp != NULL) {
+            token = strsep(&stringp, " ");
+            if (j == 1) {
+                date = atoi(token);
+            } else if (j == 2) {
+                nb_ticket = atoi(token);
+            }
+            j++;
+        }
+        printf("date %i, nbtickets %i", date, nb_ticket);
+
+        sprintf(query, "%s", "holle \n");
+    } else if (query[0] == 'R') {
+
+    } else {
+        printf("Mauvaise saisie client %s \n", query);
+    }
+
+    //Recherche dans la mémoire
+    if (date != -1 && nb_ticket != 0) {
+        down(shmid_reserv, 0);
+        jour *reserv = (jour *) shmat(shmid_reserv, NULL, 0);
+        printf("Reservation dans le fils : %i \n", reserv[0].date);
+
+        //Verification du tableau
+        for (int i = 0; i<sizeof reserv; i++) {
+            printf("Jour %i", reserv[i].horaires[1]);
+            fflush(stdout);
+        }
+
+        fflush(stdout);
+        up(shmid_reserv, 0);
+    }
+
     up(semid, 0);
 }
 
@@ -94,7 +136,7 @@ int main() {
         perror("Erreur lors du shmget");
         exit(-1);
     }
-    initialize(shmid, 0,0);
+    initialize(shmid, 0, 0);
 
     //Tuer les processus mechants
     //killLePeuple(string, semid, shmid);
@@ -105,13 +147,18 @@ int main() {
 
 
     //Strucutre pour gerer les reservations
-    jour * reserv = malloc(1 * sizeof (*reserv));
+    printf("taille jour %i \n", sizeof (jour));
+    fflush(stdout);
+    jour * reserv = malloc(2 * sizeof (jour));
     reserv[0].date = 0;
     reserv[0].horaires[0] = 8;
     reserv[0].horaires[1] = 14;
     reserv[0].horaires[2] = 14;
     reserv[0].horaires[3] = 8;
     reserv[0].horaires[4] = 8;
+    int nbelemns = NELEMS(reserv);
+    printf("taille reserv %i \n", nbelemns);
+
     shmid_reserv = shmget(19999, sizeof (reserv), IPC_CREAT | 0660);
     if (shmid_reserv == -1) {
         perror("Erreur lors du shmget_reserv");
