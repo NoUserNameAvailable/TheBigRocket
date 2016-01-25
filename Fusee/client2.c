@@ -12,7 +12,7 @@
 #include <sys/shm.h>
 #include <errno.h>
 #include <ctype.h>
-
+#include <string.h>
 
 int down(int sem_id, int sem_num) {
     struct sembuf sem_op;
