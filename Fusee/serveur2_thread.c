@@ -505,8 +505,6 @@ int main() {
         a->array[i][4] = 8;
         a->array[i][5] = 8;
     }
-    printf("tableau case 5x5 %d \n", a->array[4][5]);
-    fflush(stdout);
     up(shmid_reserv, 0);
 
 
