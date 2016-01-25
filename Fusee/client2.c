@@ -74,7 +74,7 @@ int main() {
         printf("String envoyee %s\n", string_in);
         up(semid, 0);
         down(semid, 0);
-        printf("String recu %s\n\n", string);   
+        printf("Message du serveur : \n%s\n", string);   
     }
 
     up(semid, 0);
