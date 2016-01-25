@@ -23,15 +23,12 @@ union semun {
     struct seminfo *__buf;
 };
 
-typedef struct {
-    int date;
-    int horaires[5];
-} jour;
-
-struct JOUR {
-    int date;
-    int horaires[5];
+struct Array {
+    int ** array;
+    size_t used;
+    size_t size;
 };
+typedef struct Array Array;
 
 int initialize(int sem_id, int sem_num, int init) {
     union semun semunion;
@@ -71,7 +68,8 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
     printf("Message recu dans le fils : %s \n", query);
 
     fflush(stdout);
-
+    char MessageRetour[2000];
+    
     //Parse message
     int date = -1;
     int nb_ticket = 0;
@@ -92,9 +90,25 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
         }
         printf("date %i, nbtickets %i", date, nb_ticket);
 
-        sprintf(query, "%s", "holle \n");
+        //sprintf(query, "%s", "holle \n");
     } else if (query[0] == 'R') {
+        printf("Consultation \n");
+        char * token;
+        char * stringp = query;
 
+        int j = 0;
+        while (stringp != NULL) {
+            token = strsep(&stringp, " ");
+            if (j == 1) {
+                date = atoi(token);
+            } else if (j == 2) {
+                nb_ticket = atoi(token);
+            }
+            j++;
+        }
+        printf("date %i, nbtickets %i", date, nb_ticket);
+
+        sprintf(query, "%s", "holle \n");
     } else {
         printf("Mauvaise saisie client %s \n", query);
     }
@@ -102,14 +116,62 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
     //Recherche dans la mémoire
     if (date != -1 && nb_ticket != 0) {
         down(shmid_reserv, 0);
-        jour *reserv = (jour *) shmat(shmid_reserv, NULL, 0);
-        printf("Reservation dans le fils : %i \n", reserv[0].date);
+        //jour *reserv = (jour *) shmat(shmid_reserv, NULL, 0);
+        //printf("Reservation dans le fils : %i \n", reserv[0].date);
+        printf("hello \n");
+        Array * a;
+        a = (Array*) shmat(shmid_reserv, NULL, SHM_W | SHM_R); // Attachement de la memoire partagee dans le pointeur memoire
 
-        //Verification du tableau
-        for (int i = 0; i<NELEMS(reserv); i++) {
-            printf("Jour %i", reserv[i].horaires[1]);
-            fflush(stdout);
+        int indice = -1;
+        int i = 0;
+        for (i = 0; i < a->size; i++) {
+            if (a->array[i][0] == date) {
+                indice = i;
+            }
         }
+
+        if (indice != -1) {
+            int nbPlaceDispo = 0;
+            for (i = 1; i < 6; i++) {
+                nbPlaceDispo = nbPlaceDispo + a->array[indice][i];
+                printf("Nombre places disponibles pour le jour %d et horaire %d : %d \n", date,i, a->array[indice][i]);
+                fflush(stdout);
+            }
+            printf("Nombre places disponibles pour le jour %d : %d \n", date, nbPlaceDispo);
+            fflush(stdout);
+
+            if (nbPlaceDispo > 0) {
+                int j = 1;
+                for (j = 1; j < 5; j++) {
+                    int placedispo = a->array[indice][j];
+                    if (nb_ticket > 0 && placedispo>0) {
+
+                        if (placedispo < nb_ticket) {
+                            nb_ticket = nb_ticket - placedispo;
+                            printf("Places reservees pour l'horaire %d : %d (navette complete) \n", j, placedispo);
+                            char ecrire[100];
+                            sprintf(ecrire, "Places reservees pour l'horaire %d : %d (navette complete) \n", j, placedispo);
+                            strcat(MessageRetour, ecrire);
+                            fflush(stdout);
+                            a->array[indice][j] = 0;
+                        } else {
+                            printf("Place reservees pour l'horaire %d : %d \n", j, nb_ticket);
+                            char ecrire[100];
+                            sprintf(ecrire, "Place reservees pour l'horaire %d : %d \n", j, nb_ticket);
+                            strcat(MessageRetour, ecrire);
+                            fflush(stdout);
+                            nb_ticket = placedispo - nb_ticket;
+                            a->array[indice][j] = nb_ticket;
+                            nb_ticket = 0;
+                        }
+                    }
+                }
+
+            }
+        }
+
+        sprintf(query, MessageRetour);
+
 
         fflush(stdout);
         up(shmid_reserv, 0);
@@ -152,32 +214,35 @@ int main() {
 
 
     //Strucutre pour gerer les reservations
-    printf("taille jour %i \n", sizeof (jour));
-    fflush(stdout);
-    jour * reserv = (jour*) malloc(10*sizeof (jour));
-    reserv = (jour*) realloc(reserv, 2*sizeof(jour));
-    for (int i = 0; i < 45; i++) {
-        reserv[i].date = i;
-        reserv[i].horaires[0] = 8;
-        reserv[i].horaires[1] = 14;
-        reserv[i].horaires[2] = 14;
-        reserv[i].horaires[3] = 8;
-        reserv[i].horaires[4] = 8;
-    }
-
-    int nbelemns = NELEMS(reserv);
-
-    printf("taille horaires %i \n", sizeof (jour));
-    printf("taille reserv %i \n", sizeof reserv);
-    printf("eleme 40 %i \n", reserv[40].horaires[0]);
-
-    shmid_reserv = shmget(19999, sizeof (reserv), IPC_CREAT | 0660);
+    shmid_reserv = shmget(19999, sizeof (Array), IPC_CREAT | 0660);
     if (shmid_reserv == -1) {
         perror("Erreur lors du shmget_reserv");
         exit(-1);
     }
 
-    //reserv = realloc(reserv, sizeof(reserv) * sizeof(*reserv));
+    Array * a = malloc(sizeof (Array));
+    a = (Array *) shmat(shmid_reserv, NULL, SHM_W | SHM_R);
+
+    a->array = malloc(5 * sizeof (int**));
+    a->used = 0;
+    a->size = 5;
+
+    for (int i = 0; i < 5; i++) {
+        a->array[i] = malloc(6 * sizeof (int));
+        a->array[i][0] = i;
+        a->array[i][1] = 8;
+        a->array[i][2] = 14;
+        a->array[i][3] = 14;
+        a->array[i][4] = 8;
+        a->array[i][5] = 8;
+    }
+    printf("tableau case 5x5 %d \n", a->array[4][5]);
+    fflush(stdout);
+    up(shmid_reserv, 0);
+
+    //initialize(shmid_reserv, 0,0);
+
+
 
     while (1) {
         string = (char*) shmat(shmid, NULL, SHM_W | SHM_R); // Attachement de la memoire partagee dans le pointeur memoire
@@ -215,7 +280,7 @@ int main() {
     //        up(semid, 0);
 
 
-    free(reserv);
+    // free(reserv);
     free(string);
     return 0;
 
