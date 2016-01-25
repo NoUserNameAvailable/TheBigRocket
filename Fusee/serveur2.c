@@ -14,8 +14,6 @@
 #include <ctype.h>
 #include <string.h>
 
-#define NELEMS(x) (sizeof(x) / sizeof((x)[0]))
-
 union semun {
     int val;
     struct semid_ds *buf;
@@ -65,6 +63,8 @@ int tuerLesSegments(char * string, int shmid, int semid) {
 }
 
 void processusEnfant(char * query, int semid, int shmid_reserv) {
+    printf("\n \n");
+    fflush(stdout);
     printf("Message recu dans le fils : %s \n", query);
 
     fflush(stdout);
@@ -72,7 +72,7 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
 
     //Parse message
     int date = -1;
-    int nb_ticket = 0;
+    int tickets_demandes = 0;
     if (query[0] == 'C') {
         printf("Consultation \n");
         char * token;
@@ -84,11 +84,11 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
             if (j == 1) {
                 date = atoi(token);
             } else if (j == 2) {
-                nb_ticket = atoi(token);
+                tickets_demandes = atoi(token);
             }
             j++;
         }
-        printf("date %i, nbtickets %i", date, nb_ticket);
+        printf("Date demandée : %i \n", date);
 
     } else if (query[0] == 'R') {
         printf("Réservation \n");
@@ -101,18 +101,18 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
             if (j == 1) {
                 date = atoi(token);
             } else if (j == 2) {
-                nb_ticket = atoi(token);
+                tickets_demandes = atoi(token);
             }
             j++;
         }
-        printf("date %i, nbtickets %i", date, nb_ticket);
+        printf("Date demandée : %i \nNombre de tickets demandés : %i \n", date, tickets_demandes);
 
     } else {
         printf("Mauvaise saisie client %s \n", query);
     }
 
     //Traitement de la Reservation
-    if (date >= 0 && nb_ticket > 0 && query[0] == 'R' && date < 5000 && nb_ticket < 1000) {
+    if (date >= 0 && tickets_demandes > 0 && query[0] == 'R' && date < 5000 && tickets_demandes < 1000) {
         down(shmid_reserv, 0);
 
         Array * a;
@@ -129,14 +129,14 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
         if (indice == -1) {
             a->array = (int**) realloc(a->array, (a->size + 1) * sizeof (int *));
             a->size = a->size + 1;
-            a->array[a->size-1] = malloc(6 * sizeof (int));
-            a->array[a->size-1][0] = date;
-            a->array[a->size-1][1] = 8;
-            a->array[a->size-1][2] = 14;
-            a->array[a->size-1][3] = 14;
-            a->array[a->size-1][4] = 8;
-            a->array[a->size-1][5] = 8;
-            indice = a->size-1;
+            a->array[a->size - 1] = malloc(6 * sizeof (int));
+            a->array[a->size - 1][0] = date;
+            a->array[a->size - 1][1] = 8;
+            a->array[a->size - 1][2] = 14;
+            a->array[a->size - 1][3] = 14;
+            a->array[a->size - 1][4] = 8;
+            a->array[a->size - 1][5] = 8;
+            indice = a->size - 1;
         }
 
 
@@ -150,14 +150,14 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
             printf("Nombre places disponibles pour le jour %d : %d \n", date, nbPlaceDispo);
             fflush(stdout);
 
-            if (nbPlaceDispo > 0 && nbPlaceDispo >= nb_ticket) {
+            if (nbPlaceDispo > 0 && nbPlaceDispo >= tickets_demandes) {
                 int j = 1;
                 for (j = 1; j < 6; j++) {
                     int placedispo = a->array[indice][j];
-                    if (nb_ticket > 0 && placedispo > 0) {
+                    if (tickets_demandes > 0 && placedispo > 0) {
 
-                        if (placedispo < nb_ticket) {
-                            nb_ticket = nb_ticket - placedispo;
+                        if (placedispo < tickets_demandes) {
+                            tickets_demandes = tickets_demandes - placedispo;
                             printf("Places reservees pour l'horaire %d : %d (navette complete) \n", j, placedispo);
                             char ecrire[100];
                             sprintf(ecrire, "Places reservees pour l'horaire %d : %d (navette complete) \n", j, placedispo);
@@ -165,34 +165,37 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
                             fflush(stdout);
                             a->array[indice][j] = 0;
                         } else {
-                            printf("Place reservees pour l'horaire %d : %d \n", j, nb_ticket);
+                            printf("Place reservees pour l'horaire %d : %d \n", j, tickets_demandes);
                             char ecrire[100];
-                            sprintf(ecrire, "Place reservees pour l'horaire %d : %d \n", j, nb_ticket);
+                            sprintf(ecrire, "Place reservees pour l'horaire %d : %d \n", j, tickets_demandes);
                             strcat(MessageRetour, ecrire);
                             fflush(stdout);
-                            nb_ticket = placedispo - nb_ticket;
-                            a->array[indice][j] = nb_ticket;
-                            nb_ticket = 0;
+                            tickets_demandes = placedispo - tickets_demandes;
+                            a->array[indice][j] = tickets_demandes;
+                            tickets_demandes = 0;
                         }
+                        printf("\n\n");
+                        fflush(stdout);
                     }
                 }
-            } else if (nbPlaceDispo < nb_ticket) { //Nombre des places demandées trop grand pour le jour souhaité
-                printf("IMPOSSIBLE : pas assez de places(%d) pour le jour %d \n", nb_ticket, indice);
+            } else if (nbPlaceDispo < tickets_demandes) { //Nombre des places demandées trop grand pour le jour souhaité
+                printf("IMPOSSIBLE : pas assez de places(%d) pour le jour %d \n", tickets_demandes, indice);
                 char ecrire[100];
-                sprintf(ecrire, "IMPOSSIBLE : pas assez de places(%d) pour le jour %d \n", nb_ticket, indice);
+                sprintf(ecrire, "IMPOSSIBLE : pas assez de places(%d) pour le jour %d \n", tickets_demandes, indice);
                 strcat(MessageRetour, ecrire);
                 fflush(stdout);
             }
+
         }
 
-        sprintf(query,"%s", MessageRetour);
+        sprintf(query, "%s", MessageRetour);
 
         fflush(stdout);
         up(shmid_reserv, 0);
         memset(MessageRetour, 0, 2000);
 
     }//Traitement de la consultation
-    else if (date >= 0 && query[0] == 'C' && date < 5000 && nb_ticket < 1000) {
+    else if (date >= 0 && query[0] == 'C' && date < 5000 && tickets_demandes < 1000) {
         down(shmid_reserv, 0);
         printf("\n");
         Array * a;
@@ -205,19 +208,19 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
                 indice = i;
             }
         }
-        
+
         //Realloc creation case pour une nouvelle date
         if (indice == -1) {
             a->array = (int**) realloc(a->array, (a->size + 1) * sizeof (int *));
             a->size = a->size + 1;
-            a->array[a->size-1] = malloc(6 * sizeof (int));
-            a->array[a->size-1][0] = date;
-            a->array[a->size-1][1] = 8;
-            a->array[a->size-1][2] = 14;
-            a->array[a->size-1][3] = 14;
-            a->array[a->size-1][4] = 8;
-            a->array[a->size-1][5] = 8;
-            indice = a->size-1;
+            a->array[a->size - 1] = malloc(6 * sizeof (int));
+            a->array[a->size - 1][0] = date;
+            a->array[a->size - 1][1] = 8;
+            a->array[a->size - 1][2] = 14;
+            a->array[a->size - 1][3] = 14;
+            a->array[a->size - 1][4] = 8;
+            a->array[a->size - 1][5] = 8;
+            indice = a->size - 1;
         }
 
         if (indice != -1) {
@@ -233,7 +236,7 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
             strcat(MessageRetour, ecrire);
             fflush(stdout);
         }
-        sprintf(query,"%s", MessageRetour);
+        sprintf(query, "%s", MessageRetour);
 
         fflush(stdout);
         up(shmid_reserv, 0);
@@ -244,7 +247,7 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
         char ecrire[100];
         sprintf(ecrire, "Mauvaise saisie utilisateur");
         strcat(MessageRetour, ecrire);
-        sprintf(query,"%s", MessageRetour);
+        sprintf(query, "%s", MessageRetour);
         up(shmid_reserv, 0);
         memset(MessageRetour, 0, 2000);
     }
