@@ -112,11 +112,10 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
         printf("Mauvaise saisie client %s \n", query);
     }
 
-    //Recherche dans la mémoire
-    if (date != -1 && nb_ticket != 0 && query[0] == 'R') {
+    //Traitement de la Reservation
+    if (date >= 0 && nb_ticket > 0 && query[0] == 'R' && date < 5000 && nb_ticket < 1000) {
         down(shmid_reserv, 0);
 
-        printf("hello \n");
         Array * a;
         a = (Array*) shmat(shmid_reserv, NULL, SHM_W | SHM_R); // Attachement de la memoire partagee dans le pointeur memoire
 
@@ -127,6 +126,20 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
                 indice = i;
             }
         }
+        //Realloc creation case pour une nouvelle date
+        if (indice == -1) {
+            a->array = (int**) realloc(a->array, (a->size + 1) * sizeof (int *));
+            a->size = a->size + 1;
+            a->array[a->size-1] = malloc(6 * sizeof (int));
+            a->array[a->size-1][0] = date;
+            a->array[a->size-1][1] = 8;
+            a->array[a->size-1][2] = 14;
+            a->array[a->size-1][3] = 14;
+            a->array[a->size-1][4] = 8;
+            a->array[a->size-1][5] = 8;
+            indice = a->size-1;
+        }
+
 
         if (indice != -1) {
             int nbPlaceDispo = 0;
@@ -165,9 +178,9 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
                     }
                 }
             } else if (nbPlaceDispo < nb_ticket) { //Nombre des places demandées trop grand pour le jour souhaité
-                printf("IMPOSSIBLE : pas assez de place(%d) pour le jour %d \n", nb_ticket, indice);
+                printf("IMPOSSIBLE : pas assez de places(%d) pour le jour %d \n", nb_ticket, indice);
                 char ecrire[100];
-                sprintf(ecrire, "IMPOSSIBLE : pas assez de place(%d) pour le jour %d \n", nb_ticket, indice);
+                sprintf(ecrire, "IMPOSSIBLE : pas assez de places(%d) pour le jour %d \n", nb_ticket, indice);
                 strcat(MessageRetour, ecrire);
                 fflush(stdout);
             }
@@ -179,12 +192,9 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
         up(shmid_reserv, 0);
         memset(MessageRetour, 0, 2000);
 
-    }
-
-    if (date != -1 && query[0] == 'C') {
+    }//Traitement de la consultation
+    else if (date >= 0 && query[0] == 'C' && date < 5000 && nb_ticket < 1000) {
         down(shmid_reserv, 0);
-        //jour *reserv = (jour *) shmat(shmid_reserv, NULL, 0);
-        //printf("Reservation dans le fils : %i \n", reserv[0].date);
         printf("\n");
         Array * a;
         a = (Array*) shmat(shmid_reserv, NULL, SHM_W | SHM_R); // Attachement de la memoire partagee dans le pointeur memoire
@@ -196,18 +206,32 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
                 indice = i;
             }
         }
+        
+        //Realloc creation case pour une nouvelle date
+        if (indice == -1) {
+            a->array = (int**) realloc(a->array, (a->size + 1) * sizeof (int *));
+            a->size = a->size + 1;
+            a->array[a->size-1] = malloc(6 * sizeof (int));
+            a->array[a->size-1][0] = date;
+            a->array[a->size-1][1] = 8;
+            a->array[a->size-1][2] = 14;
+            a->array[a->size-1][3] = 14;
+            a->array[a->size-1][4] = 8;
+            a->array[a->size-1][5] = 8;
+            indice = a->size-1;
+        }
 
         if (indice != -1) {
             int nbPlaceDispo = 0;
             for (i = 1; i < 6; i++) {
                 nbPlaceDispo = nbPlaceDispo + a->array[indice][i];
                 printf("Nombre places disponibles pour le jour %d et horaire %d : %d \n", date, i, a->array[indice][i]);
-                char ecrire[100];
-                sprintf(ecrire, "Nombre places disponibles pour le jour %d et horaire %d : %d \n", date, i, a->array[indice][i]);
-                strcat(MessageRetour, ecrire);
                 fflush(stdout);
             }
             printf("Nombre places disponibles pour le jour %d : %d \n", date, nbPlaceDispo);
+            char ecrire[100];
+            sprintf(ecrire, "Nombre places disponibles pour le jour %d : %d \n", date, nbPlaceDispo);
+            strcat(MessageRetour, ecrire);
             fflush(stdout);
         }
         sprintf(query, MessageRetour);
@@ -216,6 +240,14 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
         up(shmid_reserv, 0);
         memset(MessageRetour, 0, 2000);
 
+    }//Mauvais paramètres
+    else {
+        char ecrire[100];
+        sprintf(ecrire, "Mauvaise saisie utilisateur");
+        strcat(MessageRetour, ecrire);
+        sprintf(query, MessageRetour);
+        up(shmid_reserv, 0);
+        memset(MessageRetour, 0, 2000);
     }
 
     up(semid, 0);
@@ -255,7 +287,7 @@ int main() {
 
 
     //Strucutre pour gerer les reservations
-    shmid_reserv = shmget(19999, sizeof (Array), IPC_CREAT | 0660);
+    shmid_reserv = shmget(1999, sizeof (Array), IPC_CREAT | 0660);
     if (shmid_reserv == -1) {
         perror("Erreur lors du shmget_reserv");
         exit(-1);
@@ -268,7 +300,7 @@ int main() {
     a->used = 0;
     a->size = 5;
 
-    for (int i = 0; i < 5; i++) {
+    for (i = 0; i < 5; i++) {
         a->array[i] = malloc(6 * sizeof (int));
         a->array[i][0] = i;
         a->array[i][1] = 8;
