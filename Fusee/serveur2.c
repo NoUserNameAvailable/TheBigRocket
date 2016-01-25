@@ -57,7 +57,7 @@ int up(int sem_id, int sem_num) {
     if (semop(sem_id, &sem_op, 1) == -1) return -1;
 }
 
-int killLePeuple(char * string, int shmid, int semid) {
+int tuerLesSegments(char * string, int shmid, int semid) {
     shmdt(string); // Detachement de la memoire partagee	
     shmctl(shmid, IPC_RMID, NULL); // Suppression de la memoire partagee
     semctl(semid, 0, IPC_RMID, NULL); // Suppression du groupe de semaphores
@@ -90,7 +90,6 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
         }
         printf("date %i, nbtickets %i", date, nb_ticket);
 
-        //sprintf(query, "%s", "holle \n");
     } else if (query[0] == 'R') {
         printf("Réservation \n");
         char * token;
@@ -186,7 +185,7 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
             }
         }
 
-        sprintf(query, MessageRetour);
+        sprintf(query,"%s", MessageRetour);
 
         fflush(stdout);
         up(shmid_reserv, 0);
@@ -234,7 +233,7 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
             strcat(MessageRetour, ecrire);
             fflush(stdout);
         }
-        sprintf(query, MessageRetour);
+        sprintf(query,"%s", MessageRetour);
 
         fflush(stdout);
         up(shmid_reserv, 0);
@@ -245,7 +244,7 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
         char ecrire[100];
         sprintf(ecrire, "Mauvaise saisie utilisateur");
         strcat(MessageRetour, ecrire);
-        sprintf(query, MessageRetour);
+        sprintf(query,"%s", MessageRetour);
         up(shmid_reserv, 0);
         memset(MessageRetour, 0, 2000);
     }
@@ -342,18 +341,6 @@ int main() {
     printf("serveur message recu %s \n", string);
     fflush(stdout);
 
-    //sprintf(string, "%s", string);
-
-    //    printf("%s", string);
-    //    fflush(stdout);
-    //    printf("\n");
-    //    fflush(stdout);
-    //    up(semid, 0);
-    //        down(semid, 0);
-    //        up(semid, 0);
-
-
-    // free(reserv);
     free(string);
     return 0;
 
