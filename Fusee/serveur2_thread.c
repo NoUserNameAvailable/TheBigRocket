@@ -102,7 +102,7 @@ void *threadEnfant(void *arguments) {
         }
         printf("date %i, nbtickets %i", date, nb_ticket);
 
-        //sprintf(query, "%s", "holle \n");
+ 
     } else if (query[0] == 'R') {
         printf("Réservation \n");
         char * token;
@@ -198,7 +198,7 @@ void *threadEnfant(void *arguments) {
             }
         }
 
-        sprintf(query, MessageRetour);
+        sprintf(query,"%s", MessageRetour);
 
         fflush(stdout);
         up(shmid_reserv, 0);
@@ -246,7 +246,7 @@ void *threadEnfant(void *arguments) {
             strcat(MessageRetour, ecrire);
             fflush(stdout);
         }
-        sprintf(query, MessageRetour);
+        sprintf(query,"%s", MessageRetour);
 
         fflush(stdout);
         up(shmid_reserv, 0);
@@ -257,7 +257,7 @@ void *threadEnfant(void *arguments) {
         char ecrire[100];
         sprintf(ecrire, "Mauvaise saisie utilisateur");
         strcat(MessageRetour, ecrire);
-        sprintf(query, MessageRetour);
+        sprintf(query,"%s", MessageRetour);
         up(shmid_reserv, 0);
         memset(MessageRetour, 0, 2000);
     }
@@ -291,7 +291,6 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
         }
         printf("date %i, nbtickets %i", date, nb_ticket);
 
-        //sprintf(query, "%s", "holle \n");
     } else if (query[0] == 'R') {
         printf("Réservation \n");
         char * token;
@@ -387,7 +386,7 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
             }
         }
 
-        sprintf(query, MessageRetour);
+        sprintf(query,"%s", MessageRetour);
 
         fflush(stdout);
         up(shmid_reserv, 0);
@@ -435,7 +434,7 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
             strcat(MessageRetour, ecrire);
             fflush(stdout);
         }
-        sprintf(query, MessageRetour);
+        sprintf(query,"%s", MessageRetour);
 
         fflush(stdout);
         up(shmid_reserv, 0);
@@ -446,7 +445,7 @@ void processusEnfant(char * query, int semid, int shmid_reserv) {
         char ecrire[100];
         sprintf(ecrire, "Mauvaise saisie utilisateur");
         strcat(MessageRetour, ecrire);
-        sprintf(query, MessageRetour);
+        sprintf(query,"%s", MessageRetour);
         up(shmid_reserv, 0);
         memset(MessageRetour, 0, 2000);
     }
@@ -523,7 +522,7 @@ int main() {
         args.query = string;
         args.semid = semid;
         args.shmid_reserv = shmid_reserv;
-        pthread_create(&thread1, NULL, &threadEnfant(), (void *)&args!=0);
+        pthread_create(&thread1, NULL, &threadEnfant, (void *)&args);
 
     }
     printf("serveur message recu %s \n", string);
