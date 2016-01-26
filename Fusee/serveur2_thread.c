@@ -15,8 +15,6 @@
 #include <string.h>
 #include <pthread.h>
 
-#define NELEMS(x) (sizeof(x) / sizeof((x)[0]))
-
 union semun {
     int val;
     struct semid_ds *buf;
@@ -31,13 +29,13 @@ struct Array {
 };
 typedef struct Array Array;
 
-struct arg_struct {
+struct arg_struct { // Paramètres du thread
     char * query;
     int semid;
     int shmid_reserv;
 };
 
-int initialize(int sem_id, int sem_num, int init) {
+int initialize(int sem_id, int sem_num, int init) { // Création de la mémoire partagée
     union semun semunion;
 
     semunion.val = init;
@@ -45,7 +43,7 @@ int initialize(int sem_id, int sem_num, int init) {
     else return 0;
 }
 
-int down(int sem_id, int sem_num) {
+int down(int sem_id, int sem_num) { // Mise en écoute 
     struct sembuf sem_op;
     sem_op.sem_num = sem_num;
     sem_op.sem_op = -1;
@@ -55,7 +53,7 @@ int down(int sem_id, int sem_num) {
     else return 0;
 }
 
-int up(int sem_id, int sem_num) {
+int up(int sem_id, int sem_num) { // Message envoyé
     struct sembuf sem_op;
     sem_op.sem_num = sem_num;
     sem_op.sem_op = +1;
@@ -71,7 +69,7 @@ int tuerLesSegments(char * string, int shmid, int semid) {
     exit(1);
 }
 
-void *threadEnfant(void *arguments) {
+void *threadEnfant(void *arguments) { // Traite la requête enfant 
 
     struct arg_struct *args = arguments;
     char * query = args->query;
@@ -84,7 +82,7 @@ void *threadEnfant(void *arguments) {
 
     //Parse message
     int date = -1;
-    int nb_ticket = 0;
+    int tickets_demandes = 0;
     if (query[0] == 'C') {
         printf("Consultation \n");
         char * token;
@@ -96,13 +94,13 @@ void *threadEnfant(void *arguments) {
             if (j == 1) {
                 date = atoi(token);
             } else if (j == 2) {
-                nb_ticket = atoi(token);
+                tickets_demandes = atoi(token);
             }
             j++;
         }
-        printf("date %i, nbtickets %i", date, nb_ticket);
+        printf("date %i, nbtickets %i", date, tickets_demandes);
 
- 
+
     } else if (query[0] == 'R') {
         printf("Réservation \n");
         char * token;
@@ -114,18 +112,18 @@ void *threadEnfant(void *arguments) {
             if (j == 1) {
                 date = atoi(token);
             } else if (j == 2) {
-                nb_ticket = atoi(token);
+                tickets_demandes = atoi(token);
             }
             j++;
         }
-        printf("date %i, nbtickets %i", date, nb_ticket);
+        printf("date %i, nbtickets %i", date, tickets_demandes);
 
     } else {
         printf("Mauvaise saisie client %s \n", query);
     }
 
     //Traitement de la Reservation
-    if (date >= 0 && nb_ticket > 0 && query[0] == 'R' && date < 5000 && nb_ticket < 1000) {
+    if (date >= 0 && tickets_demandes > 0 && query[0] == 'R' && date < 5000 && tickets_demandes < 1000) {
         down(shmid_reserv, 0);
 
         Array * a;
@@ -153,7 +151,7 @@ void *threadEnfant(void *arguments) {
         }
 
 
-        if (indice != -1) {
+        if (indice != -1) { // Une case correspond à la date demandée par l'utilisateur
             int nbPlaceDispo = 0;
             for (i = 1; i < 6; i++) {
                 nbPlaceDispo = nbPlaceDispo + a->array[indice][i];
@@ -163,49 +161,49 @@ void *threadEnfant(void *arguments) {
             printf("Nombre places disponibles pour le jour %d : %d \n", date, nbPlaceDispo);
             fflush(stdout);
 
-            if (nbPlaceDispo > 0 && nbPlaceDispo >= nb_ticket) {
+            if (nbPlaceDispo > 0 && nbPlaceDispo >= tickets_demandes) { // assez de places disponibles pour le jour demandé
                 int j = 1;
                 for (j = 1; j < 6; j++) {
                     int placedispo = a->array[indice][j];
-                    if (nb_ticket > 0 && placedispo > 0) {
+                    if (tickets_demandes > 0 && placedispo > 0) {
 
-                        if (placedispo < nb_ticket) {
-                            nb_ticket = nb_ticket - placedispo;
+                        if (placedispo < tickets_demandes) { // Plus de tickets demandés que de place dans une navette
+                            tickets_demandes = tickets_demandes - placedispo;
                             printf("Places reservees pour l'horaire %d : %d (navette complete) \n", j, placedispo);
                             char ecrire[100];
                             sprintf(ecrire, "Places reservees pour l'horaire %d : %d (navette complete) \n", j, placedispo);
                             strcat(MessageRetour, ecrire);
                             fflush(stdout);
                             a->array[indice][j] = 0;
-                        } else {
-                            printf("Place reservees pour l'horaire %d : %d \n", j, nb_ticket);
+                        } else { // Plus de place que de tickets demandés
+                            printf("Place reservees pour l'horaire %d : %d \n", j, tickets_demandes);
                             char ecrire[100];
-                            sprintf(ecrire, "Place reservees pour l'horaire %d : %d \n", j, nb_ticket);
+                            sprintf(ecrire, "Place reservees pour l'horaire %d : %d \n", j, tickets_demandes);
                             strcat(MessageRetour, ecrire);
                             fflush(stdout);
-                            nb_ticket = placedispo - nb_ticket;
-                            a->array[indice][j] = nb_ticket;
-                            nb_ticket = 0;
+                            tickets_demandes = placedispo - tickets_demandes;
+                            a->array[indice][j] = tickets_demandes;
+                            tickets_demandes = 0;
                         }
                     }
                 }
-            } else if (nbPlaceDispo < nb_ticket) { //Nombre des places demandées trop grand pour le jour souhaité
-                printf("IMPOSSIBLE : pas assez de places(%d) pour le jour %d \n", nb_ticket, indice);
+            } else if (nbPlaceDispo < tickets_demandes) { //Nombre de places demandées trop grand pour le jour souhaité
+                printf("IMPOSSIBLE : pas assez de places(%d) pour le jour %d \n", tickets_demandes, indice);
                 char ecrire[100];
-                sprintf(ecrire, "IMPOSSIBLE : pas assez de places(%d) pour le jour %d \n", nb_ticket, indice);
+                sprintf(ecrire, "IMPOSSIBLE : pas assez de places(%d) pour le jour %d \n", tickets_demandes, indice);
                 strcat(MessageRetour, ecrire);
                 fflush(stdout);
             }
         }
 
-        sprintf(query,"%s", MessageRetour);
+        sprintf(query, "%s", MessageRetour);
 
         fflush(stdout);
         up(shmid_reserv, 0);
         memset(MessageRetour, 0, 2000);
 
-    }//Traitement de la consultation
-    else if (date >= 0 && query[0] == 'C' && date < 5000 && nb_ticket < 1000) {
+    }//Traitement de la consultation (même chose que pour la réservation, sauf que les places ne sont pas allouées)
+    else if (date >= 0 && query[0] == 'C' && date < 5000 && tickets_demandes < 1000) {
         down(shmid_reserv, 0);
         printf("\n");
         Array * a;
@@ -246,7 +244,7 @@ void *threadEnfant(void *arguments) {
             strcat(MessageRetour, ecrire);
             fflush(stdout);
         }
-        sprintf(query,"%s", MessageRetour);
+        sprintf(query, "%s", MessageRetour);
 
         fflush(stdout);
         up(shmid_reserv, 0);
@@ -257,195 +255,7 @@ void *threadEnfant(void *arguments) {
         char ecrire[100];
         sprintf(ecrire, "Mauvaise saisie utilisateur");
         strcat(MessageRetour, ecrire);
-        sprintf(query,"%s", MessageRetour);
-        up(shmid_reserv, 0);
-        memset(MessageRetour, 0, 2000);
-    }
-
-    up(semid, 0);
-}
-
-void processusEnfant(char * query, int semid, int shmid_reserv) {
-    printf("Message recu dans le fils : %s \n", query);
-
-    fflush(stdout);
-    char MessageRetour[2000];
-
-    //Parse message
-    int date = -1;
-    int nb_ticket = 0;
-    if (query[0] == 'C') {
-        printf("Consultation \n");
-        char * token;
-        char * stringp = query;
-
-        int j = 0;
-        while (stringp != NULL) {
-            token = strsep(&stringp, " ");
-            if (j == 1) {
-                date = atoi(token);
-            } else if (j == 2) {
-                nb_ticket = atoi(token);
-            }
-            j++;
-        }
-        printf("date %i, nbtickets %i", date, nb_ticket);
-
-    } else if (query[0] == 'R') {
-        printf("Réservation \n");
-        char * token;
-        char * stringp = query;
-
-        int j = 0;
-        while (stringp != NULL) {
-            token = strsep(&stringp, " ");
-            if (j == 1) {
-                date = atoi(token);
-            } else if (j == 2) {
-                nb_ticket = atoi(token);
-            }
-            j++;
-        }
-        printf("date %i, nbtickets %i", date, nb_ticket);
-
-    } else {
-        printf("Mauvaise saisie client %s \n", query);
-    }
-
-    //Traitement de la Reservation
-    if (date >= 0 && nb_ticket > 0 && query[0] == 'R' && date < 5000 && nb_ticket < 1000) {
-        down(shmid_reserv, 0);
-
-        Array * a;
-        a = (Array*) shmat(shmid_reserv, NULL, SHM_W | SHM_R); // Attachement de la memoire partagee dans le pointeur memoire
-
-        int indice = -1;
-        int i = 0;
-        for (i = 0; i < a->size; i++) {
-            if (a->array[i][0] == date) {
-                indice = i;
-            }
-        }
-        //Realloc creation case pour une nouvelle date
-        if (indice == -1) {
-            a->array = (int**) realloc(a->array, (a->size + 1) * sizeof (int *));
-            a->size = a->size + 1;
-            a->array[a->size - 1] = malloc(6 * sizeof (int));
-            a->array[a->size - 1][0] = date;
-            a->array[a->size - 1][1] = 8;
-            a->array[a->size - 1][2] = 14;
-            a->array[a->size - 1][3] = 14;
-            a->array[a->size - 1][4] = 8;
-            a->array[a->size - 1][5] = 8;
-            indice = a->size - 1;
-        }
-
-
-        if (indice != -1) {
-            int nbPlaceDispo = 0;
-            for (i = 1; i < 6; i++) {
-                nbPlaceDispo = nbPlaceDispo + a->array[indice][i];
-                printf("Nombre places disponibles pour le jour %d et horaire %d : %d \n", date, i, a->array[indice][i]);
-                fflush(stdout);
-            }
-            printf("Nombre places disponibles pour le jour %d : %d \n", date, nbPlaceDispo);
-            fflush(stdout);
-
-            if (nbPlaceDispo > 0 && nbPlaceDispo >= nb_ticket) {
-                int j = 1;
-                for (j = 1; j < 6; j++) {
-                    int placedispo = a->array[indice][j];
-                    if (nb_ticket > 0 && placedispo > 0) {
-
-                        if (placedispo < nb_ticket) {
-                            nb_ticket = nb_ticket - placedispo;
-                            printf("Places reservees pour l'horaire %d : %d (navette complete) \n", j, placedispo);
-                            char ecrire[100];
-                            sprintf(ecrire, "Places reservees pour l'horaire %d : %d (navette complete) \n", j, placedispo);
-                            strcat(MessageRetour, ecrire);
-                            fflush(stdout);
-                            a->array[indice][j] = 0;
-                        } else {
-                            printf("Place reservees pour l'horaire %d : %d \n", j, nb_ticket);
-                            char ecrire[100];
-                            sprintf(ecrire, "Place reservees pour l'horaire %d : %d \n", j, nb_ticket);
-                            strcat(MessageRetour, ecrire);
-                            fflush(stdout);
-                            nb_ticket = placedispo - nb_ticket;
-                            a->array[indice][j] = nb_ticket;
-                            nb_ticket = 0;
-                        }
-                    }
-                }
-            } else if (nbPlaceDispo < nb_ticket) { //Nombre des places demandées trop grand pour le jour souhaité
-                printf("IMPOSSIBLE : pas assez de places(%d) pour le jour %d \n", nb_ticket, indice);
-                char ecrire[100];
-                sprintf(ecrire, "IMPOSSIBLE : pas assez de places(%d) pour le jour %d \n", nb_ticket, indice);
-                strcat(MessageRetour, ecrire);
-                fflush(stdout);
-            }
-        }
-
-        sprintf(query,"%s", MessageRetour);
-
-        fflush(stdout);
-        up(shmid_reserv, 0);
-        memset(MessageRetour, 0, 2000);
-
-    }//Traitement de la consultation
-    else if (date >= 0 && query[0] == 'C' && date < 5000 && nb_ticket < 1000) {
-        down(shmid_reserv, 0);
-        printf("\n");
-        Array * a;
-        a = (Array*) shmat(shmid_reserv, NULL, SHM_W | SHM_R); // Attachement de la memoire partagee dans le pointeur memoire
-
-        int indice = -1;
-        int i = 0;
-        for (i = 0; i < a->size; i++) {
-            if (a->array[i][0] == date) {
-                indice = i;
-            }
-        }
-
-        //Realloc creation case pour une nouvelle date
-        if (indice == -1) {
-            a->array = (int**) realloc(a->array, (a->size + 1) * sizeof (int *));
-            a->size = a->size + 1;
-            a->array[a->size - 1] = malloc(6 * sizeof (int));
-            a->array[a->size - 1][0] = date;
-            a->array[a->size - 1][1] = 8;
-            a->array[a->size - 1][2] = 14;
-            a->array[a->size - 1][3] = 14;
-            a->array[a->size - 1][4] = 8;
-            a->array[a->size - 1][5] = 8;
-            indice = a->size - 1;
-        }
-
-        if (indice != -1) {
-            int nbPlaceDispo = 0;
-            for (i = 1; i < 6; i++) {
-                nbPlaceDispo = nbPlaceDispo + a->array[indice][i];
-                printf("Nombre places disponibles pour le jour %d et horaire %d : %d \n", date, i, a->array[indice][i]);
-                fflush(stdout);
-            }
-            printf("Nombre places disponibles pour le jour %d : %d \n", date, nbPlaceDispo);
-            char ecrire[100];
-            sprintf(ecrire, "Nombre places disponibles pour le jour %d : %d \n", date, nbPlaceDispo);
-            strcat(MessageRetour, ecrire);
-            fflush(stdout);
-        }
-        sprintf(query,"%s", MessageRetour);
-
-        fflush(stdout);
-        up(shmid_reserv, 0);
-        memset(MessageRetour, 0, 2000);
-
-    }//Mauvais paramètres
-    else {
-        char ecrire[100];
-        sprintf(ecrire, "Mauvaise saisie utilisateur");
-        strcat(MessageRetour, ecrire);
-        sprintf(query,"%s", MessageRetour);
+        sprintf(query, "%s", MessageRetour);
         up(shmid_reserv, 0);
         memset(MessageRetour, 0, 2000);
     }
@@ -475,15 +285,12 @@ int main() {
     }
     initialize(shmid, 0, 0);
 
-    //Tuer les processus mechants
-    //tuerLesSegments(string, semid, shmid);
-
     //Initialisation pid
     pid_t pid;
     int status;
 
 
-    //Strucutre pour gerer les reservations
+    //Initialisation de la strucutre pour gerer les reservations
     shmid_reserv = shmget(1999, sizeof (Array), IPC_CREAT | 0660);
     if (shmid_reserv == -1) {
         perror("Erreur lors du shmget_reserv");
@@ -510,7 +317,7 @@ int main() {
 
 
 
-    while (1) {
+    while (1) { // Boucle infinie d'écoute et de réponse
         string = (char*) shmat(shmid, NULL, SHM_W | SHM_R); // Attachement de la memoire partagee dans le pointeur memoire
 
         down(semid, 0);
@@ -520,7 +327,7 @@ int main() {
         args.query = string;
         args.semid = semid;
         args.shmid_reserv = shmid_reserv;
-        pthread_create(&thread1, NULL, &threadEnfant, (void *)&args);
+        pthread_create(&thread1, NULL, &threadEnfant, (void *) &args);
 
     }
     printf("serveur message recu %s \n", string);

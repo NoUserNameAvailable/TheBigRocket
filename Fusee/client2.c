@@ -14,7 +14,7 @@
 #include <ctype.h>
 #include <string.h>
 
-int down(int sem_id, int sem_num) {
+int down(int sem_id, int sem_num) {// Mise en écoute 
     struct sembuf sem_op;
     sem_op.sem_num = sem_num;
     sem_op.sem_op = -1;
@@ -26,7 +26,7 @@ int down(int sem_id, int sem_num) {
     } else return 0;
 }
 
-int up(int sem_id, int sem_num) {
+int up(int sem_id, int sem_num) {// Message envoyé
     struct sembuf sem_op;
     sem_op.sem_num = sem_num;
     sem_op.sem_op = +1;
@@ -64,9 +64,9 @@ int main() {
 
     string = (char*) shmat(shmid, NULL, SHM_W | SHM_R); // Attachement de la memoire partagee dans le pointeur memoire
 
-    while (1) {
+    while (1) {// Boucle infinie pour échanger avec le serveur
 
-        fgets (string_in, 4096, stdin);
+        fgets (string_in, 4096, stdin); // Récupère la string saisie
         if ((strlen(string_in)>0) && (string_in[strlen (string_in) - 1] == '\n'))
         string_in[strlen (string_in) - 1] = '\0';
         
